@@ -1,0 +1,41 @@
+# LLM Note Organizer Configuration
+
+# Paths
+notes_dir: "/path/to/your/markdown/notes"  # Replace with your actual notes directory
+output_dir: "/path/to/your/obsidian/vault"  # Replace with your Obsidian vault directory
+
+# Model Settings
+embedding_model: "all-MiniLM-L6-v2"  # Lightweight sentence-transformers model
+use_openai: true
+openai_model: "gpt-3.5-turbo"  # Can be changed to gpt-4 for better results
+
+# Note Processing
+min_section_length: 300  # Minimum characters for a section before considering a split
+max_section_length: 2000  # Maximum recommended characters per section
+min_sections_for_split: 3  # Minimum number of sections to consider splitting
+
+# Auto-tagging
+tag_threshold: 0.7  # Confidence threshold for auto-tagging
+default_tags:
+  - "inbox"
+  - "needs_processing"
+
+# Predefined tag categories
+tag_categories:
+  topics:
+    - "science"
+    - "technology"
+    - "health"
+    - "productivity"
+    - "finance"
+    - "philosophy"
+  status:
+    - "draft"
+    - "review"
+    - "complete"
+  priority:
+    - "high"
+    - "medium"
+    - "low"
+
+# Custom rules can be added here 
