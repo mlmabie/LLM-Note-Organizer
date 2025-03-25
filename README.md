@@ -6,7 +6,7 @@ A powerful note organization system for Obsidian and other markdown-based note s
 
 - **Semantic Search**: Find notes based on meaning, not just keywords
 - **Automatic Tagging**: Intelligent tag suggestions using embeddings and LLMs
-- **Markdown Processing**: Parses and processes markdown content into sections
+- **Markdown Processing**: Parses and processes sloppy markdown content into sections
 - **Efficient Embeddings**: Uses Clustered Compositional Embeddings (CCE) for fast, memory-efficient embeddings
 - **RESTful API**: Access all functionality through a well-documented API
 - **File Upload**: Easily import your existing markdown files
