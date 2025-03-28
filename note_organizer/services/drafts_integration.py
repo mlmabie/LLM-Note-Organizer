@@ -84,6 +84,38 @@ class ProcessingRequest(BaseModel):
     options: Dict[str, Any] = Field(default_factory=dict)
 
 
+def _sanitize_filename(title: str) -> str:
+    """Sanitizes a string to be safe for use as a filename."""
+    # Remove characters not suitable for filenames
+    safe_title = re.sub(r'[^\w\\s-]', '', title).strip().lower()
+    # Replace whitespace/hyphens with a single hyphen
+    safe_title = re.sub(r'[-\\s]+', '-', safe_title)
+    # Limit length to avoid issues with long filenames
+    return safe_title[:100]
+
+
+def _generate_frontmatter(title: str, tags: List[str]) -> str:
+    """Generates YAML frontmatter string for a note."""
+    frontmatter = {
+        'title': title,
+        'date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+    }
+    if tags:
+        frontmatter['tags'] = tags
+
+    # Convert to YAML format
+    frontmatter_str = '---\n'
+    for key, value in frontmatter.items():
+        if isinstance(value, list):
+            frontmatter_str += f'{key}:\n'
+            for item in value:
+                frontmatter_str += f'  - {item}\n'
+        else:
+            frontmatter_str += f'{key}: {value}\n'
+    frontmatter_str += '---\n\n'
+    return frontmatter_str
+
+
 def import_from_drafts(request: ImportRequest) -> Dict[str, Any]:
     """
     Import a note from Drafts into the Note Organizer system.
@@ -102,9 +134,8 @@ def import_from_drafts(request: ImportRequest) -> Dict[str, Any]:
             first_line = request.content.split('\n', 1)[0].strip()
             title = first_line[:50] if first_line else f"Imported Note {datetime.now().strftime('%Y-%m-%d %H:%M')}"
         
-        # Sanitize filename
-        safe_title = re.sub(r'[^\w\s-]', '', title).strip().lower()
-        safe_title = re.sub(r'[-\s]+', '-', safe_title)
+        # Sanitize filename using helper
+        safe_title = _sanitize_filename(title)
         
         # Prepare file path
         notes_dir = Path(settings.notes_dir)
@@ -121,26 +152,8 @@ def import_from_drafts(request: ImportRequest) -> Dict[str, Any]:
         # Add frontmatter if not already present
         content = request.content
         if not content.startswith('---'):
-            # Create frontmatter
-            frontmatter = {
-                'title': title,
-                'date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            }
-            
-            if request.tags:
-                frontmatter['tags'] = request.tags
-                
-            # Convert to YAML format
-            frontmatter_str = '---\n'
-            for key, value in frontmatter.items():
-                if isinstance(value, list):
-                    frontmatter_str += f'{key}:\n'
-                    for item in value:
-                        frontmatter_str += f'  - {item}\n'
-                else:
-                    frontmatter_str += f'{key}: {value}\n'
-            frontmatter_str += '---\n\n'
-            
+            # Generate frontmatter using helper
+            frontmatter_str = _generate_frontmatter(title, request.tags)
             # Add frontmatter to content
             content = frontmatter_str + content
         
@@ -264,10 +277,8 @@ def _analyze_for_split(content: str) -> List[Tuple[str, str]]:
     Returns:
         List of tuples with (heading, content) for potential new notes
     """
-    # This is a simplified implementation - in practice,
-    # we would use more sophisticated techniques to determine split points
-    
-    # Split by headers
+    # Placeholder Implementation: Splits based on markdown headers.
+    # A more sophisticated implementation could use NLP to find semantic boundaries.
     sections = []
     current_heading = None
     current_content = []
@@ -311,9 +322,11 @@ def _refine_content(content: str, options: Dict[str, Any]) -> str:
     Returns:
         Refined content
     """
-    # In a real implementation, this would call a language model
-    # Here's a placeholder implementation
-    return f"{content}\n\n[This would be refined by AI in a real implementation]"
+    # Placeholder Implementation: In a real system, this would involve
+    # calling an external LLM API (e.g., OpenAI, Anthropic) with specific prompts
+    # based on the provided 'options'. This introduces external dependencies and side effects.
+    logger.info(f"Placeholder: Refining content with options: {options}")
+    return f"## Refined Content (AI Placeholder)\\n\\n{content}\\n\\n_Refinement options used: {json.dumps(options)}_\""
 
 
 def _expand_content(content: str, options: Dict[str, Any]) -> str:
@@ -327,9 +340,9 @@ def _expand_content(content: str, options: Dict[str, Any]) -> str:
     Returns:
         Expanded content
     """
-    # In a real implementation, this would call a language model
-    # Here's a placeholder implementation
-    return f"{content}\n\n[This would be expanded by AI in a real implementation]"
+    # Placeholder Implementation: Similar to _refine_content, this would call an LLM.
+    logger.info(f"Placeholder: Expanding content with options: {options}")
+    return f"## Expanded Content (AI Placeholder)\\n\\n{content}\\n\\n_Expansion options used: {json.dumps(options)}_\""
 
 
 def _extract_information(content: str, options: Dict[str, Any]) -> str:
@@ -341,8 +354,87 @@ def _extract_information(content: str, options: Dict[str, Any]) -> str:
         options: Extraction options
         
     Returns:
-        Extracted information
+        Extracted information (e.g., summary, key points, entities)
     """
-    # In a real implementation, this would call a language model
-    # Here's a placeholder implementation
-    return f"Extracted information:\n- Item 1\n- Item 2\n[This would be actual extracted entities in a real implementation]" 
+    # Placeholder Implementation: Calls an LLM for extraction tasks.
+    logger.info(f"Placeholder: Extracting information with options: {options}")
+    # Example extraction type (can be configured via options)
+    extraction_type = options.get("type", "summary")
+    
+    # Construct the response string clearly
+    response_string = f"""## Extracted Information (AI Placeholder - Type: {extraction_type})
+
+- Extracted item 1 based on '{extraction_type}'
+- Extracted item 2 based on '{extraction_type}'
+
+_Extraction options used: {json.dumps(options)}_"""
+    return response_string
+
+
+def suggest_folder_for_content(content: str, tags: Optional[List[str]] = None, title: Optional[str] = None) -> Tuple[str, float, List[Dict[str, Any]]]:
+    """
+    Suggest a folder for organizing a note based on its content and tags.
+
+    Args:
+        content: The note content.
+        tags: Optional list of tags associated with the note.
+        title: Optional title of the note (currently unused).
+
+    Returns:
+        A tuple containing:
+            - The suggested folder name (str).
+            - The confidence score for the suggestion (float).
+            - A list of alternative folder suggestions (List[Dict[str, Any]]).
+    """
+    content = content.lower()
+    tags = tags or []
+
+    # Simple keyword-based folder suggestion (Placeholder - replace with actual AI/ML model)
+    folder_mapping = {
+        "work": ["work", "job", "project", "meeting", "client", "deadline"],
+        "personal": ["personal", "family", "home", "life", "shopping"],
+        "health": ["health", "fitness", "exercise", "doctor", "medication"],
+        "finance": ["money", "finance", "budget", "expense", "investment"],
+        "ideas": ["idea", "concept", "brainstorm", "thought"],
+        "reference": ["reference", "guide", "manual", "documentation"],
+        "journal": ["journal", "diary", "today", "yesterday", "reflection"],
+        "projects": ["project", "task", "milestone", "progress"],
+    }
+
+    # Count matches for each folder
+    folder_scores = {}
+    for folder, keywords in folder_mapping.items():
+        score = 0
+        for keyword in keywords:
+            if keyword in content:
+                score += 1
+
+        # Also check tags
+        for tag in tags:
+            if tag.lower() in keywords:
+                score += 2
+            elif tag.lower() == folder:
+                score += 3
+
+        if score > 0:
+            folder_scores[folder] = score
+
+    # If no matches, use default
+    if not folder_scores:
+        return "Inbox", 1.0, []
+
+    # Get the best match and alternatives
+    sorted_folders = sorted(folder_scores.items(), key=lambda x: x[1], reverse=True)
+    best_folder, best_score = sorted_folders[0]
+
+    # Calculate confidence (simplified)
+    total_score = sum(score for _, score in sorted_folders)
+    confidence = best_score / total_score if total_score > 0 else 0.5
+
+    # Format alternatives
+    alternatives = [
+        {"folder": folder, "confidence": score / total_score}
+        for folder, score in sorted_folders[1:4]  # Top 3 alternatives
+    ]
+
+    return best_folder, confidence, alternatives

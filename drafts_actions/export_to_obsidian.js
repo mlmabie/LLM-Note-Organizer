@@ -119,8 +119,8 @@ function suggestFolder(content, tags) {
     if (response.success) {
         return response.responseData.folder || "Inbox";
     } else {
-        console.error("API request failed:", response.error || response.statusCode);
-        return "Inbox";
+        console.error(`API request to 'suggest_folder' failed: ${response.error || 'Status code ' + response.statusCode}`);
+        return "Inbox"; // Default fallback
     }
 }
 

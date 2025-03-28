@@ -64,7 +64,7 @@ function callApi(endpoint, data) {
     if (response.success) {
         return response.responseData;
     } else {
-        throw new Error(`API request failed: ${response.error || response.statusCode}`);
+        throw new Error(`API request to '${endpoint}' failed: ${response.error || 'Status code ' + response.statusCode}`);
     }
 }
 
