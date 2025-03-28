@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+.venv/
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Note Organizer specific
+*.sqlite
+*.db
+notes/
+.cache/
+logs/
+*.egg-info/
+dist/
+build/
