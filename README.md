@@ -370,6 +370,25 @@ Note Organizer will include an Obsidian plugin for seamless integration. The plu
 
 The plugin is currently in development and will be available soon. The plugin will connect to the Note Organizer API server to provide these features.
 
+## Drafts App Integration
+
+Note Organizer now includes integration with the popular [Drafts app](https://getdrafts.com/) for iOS, iPadOS, and macOS, enabling a seamless workflow from quick capture to organized knowledge management.
+
+### Features
+
+- **AI-powered tagging**: Get intelligent tag suggestions for notes captured in Drafts
+- **Content refinement**: Improve your writing with AI assistance directly in Drafts
+- **Smart export to Obsidian**: Export notes to Obsidian with AI-suggested folder organization
+- **Note splitting**: Break long notes into multiple focused notes with proper structure
+
+### Getting Started with Drafts Integration
+
+1. Install the Drafts actions from the `drafts_actions` directory
+2. Configure your API connection in Drafts when prompted
+3. Start capturing notes in Drafts and use the actions to process and organize them
+
+For detailed setup and usage instructions, see the [Drafts Integration README](drafts_actions/README.md).
+
 ## License
 
 MIT License
