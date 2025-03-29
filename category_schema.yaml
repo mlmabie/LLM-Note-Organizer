@@ -1,0 +1,195 @@
+# Note Organizer Category Schema
+# This file defines the hierarchical category structure for note organization
+# It can be edited to customize or extend the categorization system
+
+# Top-level categories are the primary organizing principles
+# Each category can have:
+# - description: explanation of the category's purpose
+# - keywords: terms that strongly indicate the category (used by simple classifiers)
+# - subcategories: nested categories for finer organization
+# - attributes: specific properties that can be assigned to notes in this category
+
+categories:
+  # Knowledge categories
+  knowledge:
+    description: Information, concepts, and learning materials
+    keywords: [learn, concept, theory, understand, explanation, knowledge, information]
+    subcategories:
+      technical:
+        description: Technical information related to computers, programming, and engineering
+        keywords: [code, programming, software, hardware, engineering, algorithm, system, technology]
+        subcategories:
+          ai_ml:
+            description: Artificial intelligence and machine learning topics
+            keywords: [ai, ml, artificial intelligence, machine learning, neural network, llm, gpt, embedding, vector, model]
+          programming:
+            description: Programming languages, concepts, and techniques
+            keywords: [code, programming, function, class, method, algorithm, data structure, script]
+          web_development:
+            description: Web technologies and development
+            keywords: [web, html, css, javascript, frontend, backend, api, server, client]
+          data_science:
+            description: Data analysis, statistics, and data engineering
+            keywords: [data, analytics, statistics, visualization, dashboard, pipeline, etl, database]
+      business:
+        description: Business concepts, strategies, and information
+        keywords: [business, startup, company, product, market, strategy, customer, revenue]
+      philosophy:
+        description: Philosophical ideas and concepts
+        keywords: [philosophy, ethics, logic, metaphysics, epistemology, meaning, moral, existence]
+      science:
+        description: Scientific information and concepts
+        keywords: [science, scientific, physics, biology, chemistry, research, experiment, hypothesis]
+      health:
+        description: Health, medicine, and wellness information
+        keywords: [health, medical, medicine, wellness, fitness, nutrition, disease, condition, symptom, treatment]
+
+  # Task-oriented categories
+  tasks:
+    description: Action items, to-dos, and projects
+    keywords: [task, todo, action, project, plan, checklist, milestone, goal]
+    subcategories:
+      work:
+        description: Professional tasks and responsibilities
+        keywords: [work, job, professional, career, office, meeting, deadline, client, stakeholder]
+      personal:
+        description: Personal tasks and responsibilities
+        keywords: [personal, home, family, errand, appointment, chore, maintenance]
+      projects:
+        description: Ongoing structured initiatives
+        keywords: [project, initiative, development, build, create, launch]
+    attributes:
+      status:
+        type: enum
+        values: [not_started, in_progress, waiting, complete, canceled]
+      priority:
+        type: enum
+        values: [low, medium, high, urgent]
+      due_date:
+        type: date
+
+  # Creative content
+  creative:
+    description: Creative ideas, writing, and artistic content
+    keywords: [idea, creative, art, writing, design, innovation, brainstorm]
+    subcategories:
+      ideas:
+        description: Brainstorming and ideation
+        keywords: [idea, concept, brainstorm, inspiration, possibility, option]
+      writing:
+        description: Written content like drafts, articles, stories
+        keywords: [writing, draft, story, article, essay, blog, poem, novel, book]
+      design:
+        description: Design concepts and visual ideas
+        keywords: [design, visual, layout, color, typography, interface, graphic]
+
+  # Journal entries
+  journal:
+    description: Personal reflections, logs, and diary entries
+    keywords: [journal, diary, log, reflection, thought, experience, day, today, yesterday, date]
+    subcategories:
+      daily:
+        description: Daily logs and reflections
+        keywords: [daily, day, today, morning, evening, routine]
+      reflection:
+        description: Deeper personal reflections and insights
+        keywords: [reflection, insight, learning, growth, perspective, understanding]
+      gratitude:
+        description: Expressions of thanks and appreciation
+        keywords: [gratitude, thankful, appreciate, blessing, grateful]
+
+  # Reference materials
+  reference:
+    description: Materials kept for future reference
+    keywords: [reference, resource, guide, manual, documentation, lookup, collection]
+    subcategories:
+      people:
+        description: Information about people, contacts
+        keywords: [person, people, contact, profile, bio, background]
+      tools:
+        description: Tools, software, and resources
+        keywords: [tool, software, app, utility, resource, service, platform]
+      guides:
+        description: How-to guides and instructions
+        keywords: [guide, tutorial, instruction, how-to, steps, walkthrough, explanation]
+
+  # Conversations
+  conversations:
+    description: Dialogues, meetings, and discussion notes
+    keywords: [conversation, discussion, chat, talk, meeting, call, dialogue, interview]
+    subcategories:
+      meetings:
+        description: Formal meeting notes
+        keywords: [meeting, agenda, minutes, participant, attendee, discussion]
+      interviews:
+        description: Interview notes
+        keywords: [interview, candidate, question, answer, assessment]
+      chats:
+        description: Informal conversation records
+        keywords: [chat, message, conversation, talk, discussion]
+
+# Relationships between categories
+# These define how categories can relate to one another
+relationships:
+  - name: references
+    description: Note A references or cites Note B
+  - name: expands
+    description: Note A expands upon or elaborates on Note B
+  - name: contradicts
+    description: Note A contradicts or provides alternative view to Note B
+  - name: summarizes
+    description: Note A summarizes the content from Note B
+
+# Tagging system
+# These define how automatic tagging should work
+tagging:
+  # Confidence thresholds for auto-tagging
+  confidence_thresholds:
+    llm: 0.80          # Threshold for LLM-based tagging
+    embedding: 0.75     # Threshold for embedding similarity
+    keyword: 0.60       # Threshold for keyword-based tagging
+  
+  # Special tag types
+  types:
+    status:             # Tags indicating status
+      - draft
+      - in_progress
+      - complete
+      - archived
+    
+    priority:           # Tags indicating priority
+      - urgent
+      - important
+      - low_priority
+    
+    source:             # Tags indicating source
+      - email
+      - meeting
+      - web
+      - chat
+      - book
+      - paper
+      - video
+
+# Configuration for embedding models
+embeddings:
+  default_model: all-MiniLM-L6-v2
+  alternative_models:
+    - bge-small-en-v1.5
+    - e5-small-v2
+  dimensions: 384          # Default dimensions for embeddings
+  use_chunking: true       # Whether to chunk large notes before embedding
+  chunk_size: 512          # Maximum token length for chunks
+  chunk_overlap: 50        # Overlap between chunks
+
+# LLM configuration for enhanced tagging and categorization
+llm:
+  default_model: gpt-3.5-turbo
+  alternative_models:
+    - claude-3-haiku-20240307
+  system_prompt: |
+    You are an expert note organization assistant. Your task is to analyze notes
+    and correctly categorize them according to a predefined schema.
+    Focus on the primary topic and purpose of the note.
+    For each category assignment, provide a confidence score between 0.0 and 1.0.
+    Do not invent categories - only use categories from the provided schema.
