@@ -1,402 +1,144 @@
-# Note Organizer
+# LLM Note Organizer
 
-A powerful note organization system for Obsidian and other markdown-based note systems, using modern embedding techniques and LLM capabilities.
+A tool for organizing your notes from Drafts app into Obsidian with AI-powered categorization and tagging.
 
 ## Features
 
-- **Semantic Search**: Find notes based on meaning, not just keywords
-- **Automatic Tagging**: Intelligent tag suggestions using embeddings and LLMs
-- **Markdown Processing**: Parses and processes markdown content into sections
-- **Efficient Embeddings**: Uses Clustered Compositional Embeddings (CCE) for fast, memory-efficient embeddings
-- **RESTful API**: Access all functionality through a well-documented API
-- **File Upload**: Easily import your existing markdown files
-- **Front Matter Support**: Extracts and processes YAML front matter
+- **AI-powered categorization**: Automatically suggests categories for your notes
+- **Multiple classification methods**: Uses keyword matching, LLMs, and embeddings
+- **Human-in-the-loop approval**: Review and approve suggested categories
+- **Drafts JSON export support**: Works directly with Drafts app exports
+- **Obsidian integration**: Organizes notes into appropriate folders
+- **Category evaluation**: Compare the accuracy of different classification methods
 
-## Installation
+## Getting Started
 
-### Requirements
+### Prerequisites
 
-- Python 3.9+
-- [uv](https://github.com/astral-sh/uv) (faster and more reliable than pip)
+- Python 3.8+
+- Drafts app (for exporting notes)
+- Obsidian (for viewing organized notes)
 
-### Setup
+### Installation
 
 1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/note-organizer.git
-   cd note-organizer
+   ```
+   git clone https://github.com/yourusername/llm-note-organizer.git
+   cd llm-note-organizer
    ```
 
-2. Create a virtual environment and install the package:
-   ```bash
-   # Create and activate virtual environment
-   python -m venv .venv
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-   
-   # Install the package with uv
-   uv pip install -e .
+2. Install the required packages:
+   ```
+   pip install -r requirements.txt
    ```
 
-3. Initialize the system:
-   ```bash
-   note-organizer init
+3. (Optional) Set up API keys for improved categorization:
+   ```
+   export OPENAI_API_KEY="your-openai-key"  # for LLM tagging
+   export ANTHROPIC_API_KEY="your-anthropic-key"  # alternative for LLM tagging
    ```
 
-This will create a default configuration file at `~/.config/note_organizer/config.yaml` and set up the database.
+### Exporting from Drafts
 
-## Configuration
+1. Open the Drafts app on your device
+2. Select the drafts you want to export (or select all)
+3. Tap the "Share" button and choose "Export JSON"
+4. Save the JSON file to your computer
 
-The default configuration is created at `~/.config/note_organizer/config.yaml` and includes:
+### Using the Tool
 
-```yaml
-debug: true
-notes_dir: /path/to/your/notes
-database:
-  url: sqlite:///notes.db
-  echo: false
-api:
-  host: 127.0.0.1
-  port: 8000
-  cors_origins:
-  - http://localhost:3000
-embedding:
-  model_name: all-MiniLM-L6-v2
-  use_cce: true
-  cache_dir: .cache
-openai:
-  api_key: ''
-  model: gpt-3.5-turbo
-log:
-  level: INFO
-  path: logs
-```
-
-You should edit this file to:
-- Set your `notes_dir` to point to your Obsidian vault or other markdown notes location
-- Add your OpenAI API key if you want to use OpenAI for tagging (optional)
-
-## Usage
-
-### Command Line Interface
-
-Note Organizer provides a comprehensive CLI for managing your notes:
+#### Processing Drafts JSON Export
 
 ```bash
-# Initialize the system
-note-organizer init
-
-# Process your notes
-note-organizer process --path /path/to/notes
-
-# Start the API server
-note-organizer api
-
-# List all notes
-note-organizer notes list
-
-# Search notes (semantic search)
-note-organizer notes search --query "your search query"
-
-# Full-text search
-note-organizer notes search --query "exact phrase" --full-text
-
-# List all tags
-note-organizer tags list
-
-# Create a new tag
-note-organizer tags create --name "concept" --category "topics"
-
-# Get note statistics
-note-organizer stats
-
-# Configure settings
-note-organizer config --llm openai --openai-key "your-api-key"
-
-# Show current configuration
-note-organizer config --show
+python drafts_to_obsidian.py --input drafts_export.json --output /path/to/obsidian/vault
 ```
 
-For full documentation of available commands:
+This will:
+1. Load the Drafts JSON export
+2. Process each draft with the AI categorization system
+3. Ask for your approval on categories (in interactive mode)
+4. Save the drafts to your Obsidian vault in organized folders
+
+#### Command-Line Options
+
+```
+--input PATH          Input file (JSON or Markdown) or directory
+--output PATH         Obsidian vault root directory
+--schema PATH         Category schema file (default: category_schema.yaml)
+--force               Overwrite existing files
+--non-interactive     Run without user interaction
+--recursive           Process directories recursively
+--move                Move originals to archive after processing
+--watch               Watch directory for new files
+--interval SECONDS    Watch interval in seconds (default: 30)
+--json                Force processing as Drafts JSON export
+```
+
+#### Testing Different Classifiers
+
+To evaluate and improve the classification system:
+
+1. Process a sample of notes with human approval:
+   ```bash
+   python process_notes.py --dir /path/to/notes --limit 20
+   ```
+
+2. Compare classifier performance:
+   ```bash
+   python compare_classifiers.py
+   ```
+
+3. View the generated plots in the `./plots` directory
+
+## Customizing Categories
+
+Edit `category_schema.yaml` to customize the category structure. The schema includes:
+
+- Hierarchical categories and subcategories
+- Keywords for each category
+- Tagging confidence thresholds
+- Embedding model configuration
+- LLM settings for tagging
+
+## Using with iCloud
+
+For a streamlined workflow with iCloud:
+
+1. Export drafts from Drafts app to iCloud Drive
+2. Set up a watched folder:
+   ```bash
+   python drafts_to_obsidian.py --input /path/to/icloud/drafts --output /path/to/obsidian --watch
+   ```
+3. New drafts will be automatically processed when they appear in the folder
+
+## Examples
+
+### Basic Usage
 
 ```bash
-note-organizer --help
+# Process a Drafts JSON export
+python drafts_to_obsidian.py --input my_drafts.json --output ~/Documents/Obsidian
+
+# Process a directory of markdown files
+python drafts_to_obsidian.py --input ~/Downloads/drafts --output ~/Documents/Obsidian --recursive
+
+# Non-interactive mode for batch processing
+python drafts_to_obsidian.py --input drafts_export.json --output ~/Obsidian --non-interactive
 ```
 
-### Nushell Integration
-
-Note Organizer provides seamless integration with [Nushell](https://www.nushell.sh/), a modern shell designed for data manipulation.
-
-To install the Nushell integration:
+### Advanced Usage
 
 ```bash
-note-organizer nushell --install
+# Process notes with human review to train the system
+python process_notes.py --dir ~/Notes --output processed.json
+
+# Compare classifier performance
+python compare_classifiers.py --input processed.json --plot-dir ./analysis
+
+# Run with a custom category schema
+python drafts_to_obsidian.py --input drafts.json --output ~/Obsidian --schema my_schema.yaml
 ```
-
-This will create a Nushell module in `~/.config/nushell/note_organizer.nu`. Add this to your Nushell configuration to use the commands:
-
-```nushell
-source ~/.config/nushell/note_organizer.nu
-```
-
-Example Nushell commands:
-
-```nushell
-# List all notes and show only those with more than 500 words
-notes list | where word_count > 500
-
-# Search for Python notes and sort by similarity
-notes search "python" | sort-by similarity_pct | reverse
-
-# Get tags and count how many are in each category
-tags list | group-by category | get technical | length
-
-# See note statistics
-stats | get top_tags | sort-by count | reverse | first 5
-```
-
-### Start the API Server
-
-```bash
-python -m note_organizer api
-```
-
-This will start a FastAPI server on http://127.0.0.1:8000 (or your configured host/port).
-
-### Process Your Notes
-
-```bash
-python -m note_organizer process --path /path/to/your/notes
-```
-
-This will scan your notes directory, index all markdown files, and process them.
-
-### API Documentation
-
-Once the server is running, you can access the API documentation at:
-- http://127.0.0.1:8000/docs
-
-### Example API Calls
-
-#### Get all tags
-
-```bash
-curl -X GET http://127.0.0.1:8000/tags
-```
-
-#### Search notes
-
-```bash
-curl -X GET "http://127.0.0.1:8000/search?query=your%20search%20query"
-```
-
-#### Create a new note
-
-```bash
-curl -X POST http://127.0.0.1:8000/notes \
-  -H "Content-Type: application/json" \
-  -d '{"title":"New Note","content":"# New Note\n\nThis is a new note.","tags":["example"]}'
-```
-
-## Architecture
-
-The system is organized into several modules:
-
-```mermaid
-graph TD
-    subgraph "User Interfaces"
-        CLI[Command Line Interface]
-        API[API Server]
-        NU[Nushell Integration]
-    end
-    
-    subgraph "Core Components"
-        CONFIG[Configuration]
-        DB[Database]
-    end
-    
-    subgraph "Services"
-        EMBED[Embedding Service]
-        TAG[Tagging Service]
-        PROC[Processor Service]
-        SEARCH[Search Service]
-    end
-    
-    subgraph "External Systems"
-        FS[File System]
-        LLM[LLM Providers]
-        OBS[Obsidian]
-    end
-    
-    CLI --> CONFIG
-    API --> CONFIG
-    NU --> CLI
-    
-    CLI --> PROC
-    CLI --> SEARCH
-    CLI --> TAG
-    CLI --> EMBED
-    
-    API --> PROC
-    API --> SEARCH
-    API --> TAG
-    API --> EMBED
-    
-    PROC --> FS
-    PROC --> DB
-    PROC --> EMBED
-    
-    SEARCH --> DB
-    SEARCH --> EMBED
-    SEARCH --> FS
-    
-    TAG --> DB
-    TAG --> EMBED
-    TAG --> LLM
-    
-    EMBED --> CONFIG
-    TAG --> CONFIG
-    PROC --> CONFIG
-    SEARCH --> CONFIG
-    
-    OBS --> FS
-    FS --> OBS
-```
-
-The system is organized into several modules:
-
-- **API**: FastAPI server and routes
-- **Core**: Configuration and utility functions
-- **DB**: Database models and connections
-- **Services**: Business logic and processing
-
-### Key Services
-
-- **EmbeddingService**: Generates and manages text embeddings using sentence-transformers and CCE
-- **TaggingService**: Creates and manages tags using rule-based and LLM approaches
-- **ProcessorService**: Processes markdown files, extracts sections, and manages the processing pipeline
-- **SearchService**: Provides semantic and full-text search capabilities for notes
-
-### Service Architecture
-
-Note Organizer uses a simple functional approach to services:
-
-- **No Singletons or Global State**: Each service instance is created independently
-- **Dependency Injection**: Services that need dependencies receive them as arguments
-- **Composition Over Inheritance**: Services are composed together rather than inheriting from each other
-- **Functional Interface**: The `service_factory.py` module provides functions to create service instances
-
-Example usage:
-
-```python
-# Create services
-from note_organizer.services.service_factory import create_embedding_service, create_tagging_service
-
-# Create services with explicit dependencies
-embedding_service = create_embedding_service()
-tagging_service = create_tagging_service(embedding_service=embedding_service)
-
-# Use the services
-embedding = embedding_service.get_embedding("Some text")
-tags = tagging_service.generate_tags_for_note("Note content", "Note title")
-```
-
-### Data Model
-
-```mermaid
-erDiagram
-    Note ||--o{ NoteSection : contains
-    Note ||--o{ TagNoteLink : has
-    Tag ||--o{ TagNoteLink : used_in
-    
-    Note {
-        int id PK
-        string title
-        string filename
-        string path
-        int word_count
-        boolean has_front_matter
-        datetime created_at
-        datetime updated_at
-    }
-    
-    NoteSection {
-        int id PK
-        int note_id FK
-        string heading
-        string content
-        int order
-        blob embedding
-        int word_count
-    }
-    
-    Tag {
-        int id PK
-        string name
-        string category
-        string description
-    }
-    
-    TagNoteLink {
-        int id PK
-        int note_id FK
-        int tag_id FK
-        float confidence
-    }
-```
-
-## Development
-
-### Running Tests
-
-```bash
-pytest
-```
-
-### Building Documentation
-
-```bash
-cd docs
-make html
-```
-
-## Obsidian Plugin (Planned)
-
-Note Organizer will include an Obsidian plugin for seamless integration. The plugin will provide:
-
-- **Quick Tag**: Tag notes directly from Obsidian
-- **Semantic Search**: Search your notes by meaning without leaving Obsidian
-- **Tag Management**: Browse and organize your tags
-- **Suggestions**: Get automatic tag suggestions based on note content
-
-The plugin is currently in development and will be available soon. The plugin will connect to the Note Organizer API server to provide these features.
-
-## Drafts App Integration
-
-Note Organizer now includes integration with the popular [Drafts app](https://getdrafts.com/) for iOS, iPadOS, and macOS, enabling a seamless workflow from quick capture to organized knowledge management.
-
-### Features
-
-- **AI-powered tagging**: Get intelligent tag suggestions for notes captured in Drafts
-- **Content refinement**: Improve your writing with AI assistance directly in Drafts
-- **Smart export to Obsidian**: Export notes to Obsidian with AI-suggested folder organization
-- **Note splitting**: Break long notes into multiple focused notes with proper structure
-
-### Getting Started with Drafts Integration
-
-1. Install the Drafts actions from the `drafts_actions` directory
-2. Configure your API connection in Drafts when prompted
-3. Start capturing notes in Drafts and use the actions to process and organize them
-
-For detailed setup and usage instructions, see the [Drafts Integration README](drafts_actions/README.md).
 
 ## License
 
-MIT License
-
-## Acknowledgements
-
-- [sentence-transformers](https://github.com/UKPLab/sentence-transformers) for providing embedding models
-- [DSPy](https://github.com/stanfordnlp/dspy) for LLM programming
-- [FastAPI](https://fastapi.tiangolo.com/) for the API framework
-- [SQLAlchemy](https://www.sqlalchemy.org/) for database ORM
-- [PyYAML](https://pyyaml.org/) for YAML processing 
+MIT

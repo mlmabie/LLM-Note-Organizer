@@ -4,6 +4,7 @@ Drafts to Obsidian export tool with AI-powered organization.
 
 This script provides a simple command-line interface for exporting notes from
 Drafts to Obsidian with intelligent categorization and organization.
+Supports both individual Markdown files and Drafts JSON exports.
 """
 
 import os
@@ -13,7 +14,7 @@ import yaml
 import argparse
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple
-from datetime import datetime
+from datetime import datetime, timezone
 import re
 import shutil
 import time
@@ -465,6 +466,203 @@ def watch_directory(
     except KeyboardInterrupt:
         logger.info("Watching stopped by user")
 
+def process_drafts_json(
+    json_file: str,
+    obsidian_root: str,
+    schema: Dict[str, Any],
+    force: bool = False,
+    interactive: bool = True,
+    move: bool = False
+) -> Dict[str, Any]:
+    """Process a Drafts app JSON export file."""
+    try:
+        # Read the JSON file
+        with open(json_file, 'r', encoding='utf-8') as f:
+            drafts_data = json.load(f)
+        
+        if not isinstance(drafts_data, list):
+            return {
+                "success": False,
+                "message": "Invalid Drafts JSON format: expected an array of drafts"
+            }
+        
+        logger.info(f"Found {len(drafts_data)} drafts in the JSON export")
+        
+        # Process each draft
+        results = []
+        for i, draft in enumerate(drafts_data):
+            # Extract draft data
+            try:
+                draft_uuid = draft.get("uuid", f"unknown-{i}")
+                content = draft.get("content", "")
+                created_at = draft.get("createdAt")
+                modified_at = draft.get("modifiedAt")
+                
+                # Extract tags
+                tags = draft.get("tags", [])
+                
+                # Check if this is a valid draft
+                if not content:
+                    logger.warning(f"Draft {draft_uuid} has no content, skipping")
+                    continue
+                
+                # Extract title (from content or use a fallback)
+                title = extract_title_from_content(content)
+                
+                print(f"\nProcessing draft: {title} ({draft_uuid})")
+                if interactive:
+                    print(f"Created: {created_at}")
+                    print(f"Modified: {modified_at}")
+                    print(f"Tags: {', '.join(tags) if tags else 'None'}")
+                    print(f"\nPreview:\n{content[:200]}...")
+                
+                # Suggest categories
+                suggested_categories = suggest_categories(content, title, schema)
+                
+                # Get user input if interactive
+                selected_categories = []
+                if interactive:
+                    print("\nSuggested categories:")
+                    
+                    for i, (category, score) in enumerate(suggested_categories):
+                        print(f"{i+1}. {category} ({score:.2f})")
+                    
+                    # Ask user to select categories
+                    selection = input("\nSelect categories (comma-separated numbers, Enter for all): ")
+                    if selection.strip():
+                        # Parse selected indices
+                        try:
+                            indices = [int(i.strip()) - 1 for i in selection.split(',')]
+                            selected_categories = [suggested_categories[i][0] for i in indices if 0 <= i < len(suggested_categories)]
+                        except ValueError:
+                            print("Invalid selection, using all suggested categories.")
+                            selected_categories = [category for category, _ in suggested_categories]
+                    else:
+                        selected_categories = [category for category, _ in suggested_categories]
+                    
+                    # Allow adding custom categories
+                    custom = input("Add custom category (or Enter to skip): ")
+                    if custom.strip():
+                        selected_categories.append(custom.strip())
+                else:
+                    # Use top suggested categories
+                    selected_categories = [category for category, _ in suggested_categories]
+                
+                # Add a default category if none selected
+                if not selected_categories:
+                    selected_categories.append("inbox")
+                
+                # Choose primary category (first in list) for file placement
+                primary_category = selected_categories[0]
+                
+                # Generate safe filename
+                safe_title = sanitize_filename(title)
+                file_name = f"{safe_title}.md"
+                
+                # Get category path
+                category_path = get_category_path(primary_category, obsidian_root)
+                ensure_directory(category_path)
+                
+                # Prepare output path
+                output_path = category_path / file_name
+                
+                # Check if file already exists
+                if output_path.exists() and not force:
+                    print(f"File already exists: {output_path}")
+                    if interactive:
+                        overwrite = input("Overwrite? (y/n): ").lower() == 'y'
+                        if not overwrite:
+                            results.append({
+                                "success": False,
+                                "uuid": draft_uuid,
+                                "title": title,
+                                "message": "File exists and overwrite declined",
+                                "path": str(output_path)
+                            })
+                            continue
+                    else:
+                        # Generate unique filename
+                        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+                        file_name = f"{safe_title}-{timestamp}.md"
+                        output_path = category_path / file_name
+                
+                # Process content
+                final_content = content
+                
+                # Check and add frontmatter if needed
+                if not content.startswith('---'):
+                    # Convert Drafts created/modified dates if available
+                    try:
+                        created_date = datetime.fromisoformat(created_at.replace('Z', '+00:00')) if created_at else datetime.now(timezone.utc)
+                        created_str = created_date.strftime('%Y-%m-%d %H:%M:%S')
+                    except (ValueError, TypeError):
+                        created_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                        
+                    # Generate frontmatter
+                    frontmatter = generate_frontmatter(title, selected_categories, tags)
+                    final_content = frontmatter + content
+                elif tags or selected_categories:
+                    # Update existing frontmatter
+                    end_marker = content.find('\n---', 3)
+                    if end_marker > 0:
+                        front_matter = content[3:end_marker]
+                        try:
+                            metadata = yaml.safe_load(front_matter)
+                            # Add or update categories
+                            metadata['categories'] = selected_categories
+                            # Add tags if they don't exist
+                            if 'tags' not in metadata and tags:
+                                metadata['tags'] = tags
+                            
+                            # Regenerate frontmatter
+                            new_frontmatter = '---\n' + yaml.dump(metadata, default_flow_style=False) + '---\n'
+                            final_content = new_frontmatter + content[end_marker + 4:]
+                        except Exception as e:
+                            logger.warning(f"Error updating frontmatter: {e}")
+                
+                # Write the file
+                with open(output_path, 'w', encoding='utf-8') as f:
+                    f.write(final_content)
+                
+                logger.info(f"Exported draft {draft_uuid} to {output_path}")
+                
+                # Add to results
+                results.append({
+                    "success": True,
+                    "uuid": draft_uuid,
+                    "title": title,
+                    "categories": selected_categories,
+                    "tags": tags,
+                    "output_path": str(output_path),
+                    "message": f"Successfully exported to {output_path}"
+                })
+                
+            except Exception as e:
+                logger.error(f"Error processing draft {i}: {e}")
+                results.append({
+                    "success": False,
+                    "uuid": draft.get("uuid", f"unknown-{i}"),
+                    "message": f"Error: {str(e)}"
+                })
+        
+        # Summarize results
+        success_count = sum(1 for r in results if r.get("success"))
+        
+        return {
+            "success": True,
+            "total": len(results),
+            "success_count": success_count,
+            "failed_count": len(results) - success_count,
+            "results": results
+        }
+        
+    except Exception as e:
+        logger.error(f"Error processing Drafts JSON file {json_file}: {e}")
+        return {
+            "success": False,
+            "message": f"Error: {str(e)}"
+        }
+
 def main():
     """Main function."""
     parser = argparse.ArgumentParser(description="Export Drafts notes to Obsidian with AI organization")
@@ -477,6 +675,7 @@ def main():
     parser.add_argument("--move", action="store_true", help="Move originals to archive after processing")
     parser.add_argument("--watch", action="store_true", help="Watch directory for new files")
     parser.add_argument("--interval", type=int, default=30, help="Watch interval in seconds")
+    parser.add_argument("--json", action="store_true", help="Input is a Drafts JSON export file")
     args = parser.parse_args()
     
     # Load schema
@@ -496,19 +695,37 @@ def main():
     
     # Process depending on input type
     if input_path.is_file():
-        # Process single file
-        result = process_drafts_file(
-            str(input_path),
-            args.output,
-            schema,
-            args.force,
-            not args.non_interactive
-        )
-        
-        if result["success"]:
-            print(f"Successfully exported to {result['output_path']}")
+        if args.json or input_path.suffix.lower() == '.json':
+            # Process Drafts JSON export
+            result = process_drafts_json(
+                str(input_path),
+                args.output,
+                schema,
+                args.force,
+                not args.non_interactive,
+                args.move
+            )
+            
+            if result["success"]:
+                print(f"\nProcessed {result['total']} drafts.")
+                print(f"Success: {result['success_count']}")
+                print(f"Failed: {result['failed_count']}")
+            else:
+                print(f"Failed: {result['message']}")
         else:
-            print(f"Failed: {result['message']}")
+            # Process single markdown file
+            result = process_drafts_file(
+                str(input_path),
+                args.output,
+                schema,
+                args.force,
+                not args.non_interactive
+            )
+            
+            if result["success"]:
+                print(f"Successfully exported to {result['output_path']}")
+            else:
+                print(f"Failed: {result['message']}")
     
     elif input_path.is_dir():
         if args.watch:
